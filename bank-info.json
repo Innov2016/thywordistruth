@@ -1,0 +1,13 @@
+{
+  "title": "Thy Word Is Truth",
+  "translation": "King James Version",
+  "source": "https://github.com/thiagobodruk/bible/blob/master/json/en_kjv.json",
+  "total": 10776,
+  "trivia": 119,
+  "people": 5000,
+  "number": 2157,
+  "verse": 3500,
+  "notes": "Generated clues contain one exact missing span from a KJV verse. Difficulty levels are estimates. Host adjudicates spoken answers. Canon: 66 books.",
+  "multiple_choice": 8703,
+  "multiple_choice_notes": "Four shuffled choices, sampled from typed per-question distractor pools. Questions without at least three matched alternatives remain open-answer only."
+}
