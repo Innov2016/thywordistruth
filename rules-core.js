@@ -1,3 +1,4 @@
+import {exclusionKeys,conflictsWith} from './dedup-core.js';
 import {bookOf,nextTeam,makeBoard} from './game-core.js';
 import {choiceKey} from './choice-core.js';
 export const bibleBooks='Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|1 Samuel|2 Samuel|1 Kings|2 Kings|1 Chronicles|2 Chronicles|Ezra|Nehemiah|Esther|Job|Psalms|Proverbs|Ecclesiastes|Song of Solomon|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi|Matthew|Mark|Luke|John|Acts|Romans|1 Corinthians|2 Corinthians|Galatians|Ephesians|Philippians|Colossians|1 Thessalonians|2 Thessalonians|1 Timothy|2 Timothy|Titus|Philemon|Hebrews|James|1 Peter|2 Peter|1 John|2 John|3 John|Jude|Revelation'.split('|');
@@ -20,10 +21,10 @@ export function eligibleQuestions(questions,rules,mode='mixed',answerMode='open'
   return answerMode!=='choice'||new Set((q.distractors||[]).map(choiceKey).filter(k=>k!==choiceKey(q.answer))).size>=r.choiceCount-1;
  });
 }
-export function configuredBoard(questions,categories,rules,mode,answerMode,seen=[],random=Math.random){
+export function configuredBoard(questions,categories,rules,mode,answerMode,seen=[],random=Math.random,excludedQuestions=[]){
  const r=normalizeRules(rules),pool=eligibleQuestions(questions,r,mode,answerMode),rows=r.length==='short'?3:5;
  if(r.scope==='selected'&&!r.books.length)throw Error('Select at least one Bible book.');
- const board=makeBoard(pool,categories,'mixed',seen,random,rows);
+ const board=makeBoard(pool,categories,'mixed',seen,random,rows,excludedQuestions);
  const candidates=board.map((c,i)=>i).filter(i=>i>=categories.length);
  for(let n=0;n<r.dailyDoubles&&candidates.length;n++){const offset=Math.floor(random()*candidates.length),index=candidates.splice(offset,1)[0];board[index].daily=true;}
  return {board,pool};
@@ -65,7 +66,7 @@ export function undoAttempt(state){
 }
 export function hintOptions(choices,random=Math.random){const correct=choices.findIndex(c=>c.correct),wrong=choices.map((_,i)=>i).filter(i=>i!==correct);if(correct<0||!wrong.length)throw Error('No valid hint available.');const keep=wrong[Math.floor(random()*wrong.length)];return choices.map((_,i)=>i).filter(i=>i!==correct&&i!==keep);}
 export function remainingMs(timer,now=Date.now()){if(!timer)return null;return timer.paused?Math.max(0,timer.remaining):Math.max(0,timer.deadline-now);}
-export function pickFinal(pool,board,seen=[],random=Math.random){let candidates=pool.filter(q=>!board.some(c=>c.id===q.id));const fresh=candidates.filter(q=>!seen.includes(q.id));if(fresh.length)candidates=fresh;if(!candidates.length)throw Error('Final Challenge needs one extra question. Broaden the filters or turn Final Challenge off.');return structuredClone(candidates[Math.floor(random()*candidates.length)]);}
+export function pickFinal(pool,board,seen=[],random=Math.random,excludedQuestions=[]){const blocked=exclusionKeys([...board,...excludedQuestions]);let candidates=pool.filter(q=>!conflictsWith(q,blocked));const history=exclusionKeys(pool.filter(q=>seen.includes(q.id)));const fresh=candidates.filter(q=>!conflictsWith(q,history));if(fresh.length)candidates=fresh;if(!candidates.length)throw Error('Final Challenge needs one extra unrelated question. Broaden the filters or turn Final Challenge off.');return structuredClone(candidates[Math.floor(random()*candidates.length)]);}
 export function commitFinal(state){
  if(state.final?.stage!=='review')throw Error('Review the final answers before scoring.');
  for(const e of state.final.entries){if(typeof e.correct!=='boolean')throw Error('Mark every final answer correct or incorrect.');const team=state.teams.find(t=>t.id===e.teamId);validWager(e.wager,Math.max(0,team.score));}
